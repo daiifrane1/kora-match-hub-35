@@ -1,9 +1,8 @@
 
-import React from 'react';
+import React, { useRef } from 'react';
 import MatchCard, { MatchInfo } from './MatchCard';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface MatchesSectionProps {
   title: string;
@@ -11,37 +10,30 @@ interface MatchesSectionProps {
   showMore?: boolean;
   link?: string;
   horizontal?: boolean;
-  byLeague?: boolean;
 }
-
-// Group matches by league
-const groupMatchesByLeague = (matches: MatchInfo[]) => {
-  const grouped: Record<string, { league: { id: string; name: string; logo: string }, matches: MatchInfo[] }> = {};
-  
-  matches.forEach(match => {
-    const leagueId = match.league.id;
-    if (!grouped[leagueId]) {
-      grouped[leagueId] = {
-        league: match.league,
-        matches: []
-      };
-    }
-    grouped[leagueId].matches.push(match);
-  });
-  
-  return Object.values(grouped);
-};
 
 const MatchesSection: React.FC<MatchesSectionProps> = ({ 
   title, 
   matches, 
   showMore = false,
   link = "/matches",
-  horizontal = false,
-  byLeague = false
+  horizontal = false
 }) => {
-  const groupedMatches = byLeague ? groupMatchesByLeague(matches) : null;
-  
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleScroll = (direction: 'left' | 'right') => {
+    if (scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      const scrollAmount = 300; // Adjust as needed
+      
+      if (direction === 'left') {
+        container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+      } else {
+        container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      }
+    }
+  };
+
   return (
     <div className="mb-8">
       {title && (
@@ -58,38 +50,58 @@ const MatchesSection: React.FC<MatchesSectionProps> = ({
         </div>
       )}
       
-      {byLeague && groupedMatches ? (
-        <div className="space-y-6">
-          {groupedMatches.map((group) => (
-            <div key={group.league.id} className="space-y-2">
-              <div className="flex items-center space-x-2 rtl:space-x-reverse mb-2">
-                <img 
-                  src={group.league.logo} 
-                  alt={group.league.name} 
-                  className="w-6 h-6 object-contain" 
-                />
-                <h3 className="font-medium text-base">{group.league.name}</h3>
-              </div>
-              
-              <ScrollArea className="w-full">
-                <div className="flex flex-nowrap overflow-x-auto pb-2 gap-4 w-max min-w-full">
-                  {group.matches.map((match) => (
-                    <div key={match.id} className="flex-shrink-0 w-[300px]">
-                      <MatchCard match={match} />
-                    </div>
-                  ))}
+      {horizontal ? (
+        <div className="relative">
+          <div 
+            className="flex flex-nowrap overflow-x-auto pb-2 gap-4 scrollbar-hide" 
+            ref={scrollContainerRef}
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
+            {matches.length > 0 ? (
+              matches.map((match) => (
+                <div key={match.id} className="flex-shrink-0 w-[300px]">
+                  <MatchCard match={match} />
                 </div>
-              </ScrollArea>
-            </div>
-          ))}
+              ))
+            ) : (
+              <div className="flex-shrink-0 w-full text-center py-8 text-kooora-gray">
+                <p>لا توجد مباريات متاحة</p>
+              </div>
+            )}
+          </div>
+          
+          {matches.length > 3 && (
+            <>
+              <button 
+                className="absolute top-1/2 right-0 transform -translate-y-1/2 bg-white/80 rounded-full p-2 shadow-md z-10"
+                onClick={() => handleScroll('right')}
+                aria-label="التالي"
+              >
+                <ChevronRight className="h-5 w-5 text-kooora-primary" />
+              </button>
+              <button 
+                className="absolute top-1/2 left-0 transform -translate-y-1/2 bg-white/80 rounded-full p-2 shadow-md z-10"
+                onClick={() => handleScroll('left')}
+                aria-label="السابق"
+              >
+                <ChevronLeft className="h-5 w-5 text-kooora-primary" />
+              </button>
+            </>
+          )}
         </div>
       ) : (
-        <div className={`${horizontal ? "flex flex-nowrap overflow-x-auto pb-2 gap-4" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"}`}>
-          {matches.map((match) => (
-            <div key={match.id} className={horizontal ? "flex-shrink-0 w-[300px]" : ""}>
-              <MatchCard match={match} />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {matches.length > 0 ? (
+            matches.map((match) => (
+              <div key={match.id}>
+                <MatchCard match={match} />
+              </div>
+            ))
+          ) : (
+            <div className="col-span-full text-center py-8 text-kooora-gray">
+              <p>لا توجد مباريات متاحة</p>
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>
