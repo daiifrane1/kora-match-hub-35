@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Settings, Check } from "lucide-react";
+import { Settings } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 const API_KEY_STORAGE_KEY = "football_api_key";
@@ -37,16 +37,6 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onApiKeyChange }) => {
   }, [onApiKeyChange]);
 
   const handleSave = () => {
-    // Validate API key format (basic validation)
-    if (!apiKey.trim()) {
-      toast({
-        title: "خطأ",
-        description: "الرجاء إدخال مفتاح API صالح.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
     // Save API key to localStorage
     localStorage.setItem(API_KEY_STORAGE_KEY, apiKey);
     
@@ -63,23 +53,6 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onApiKeyChange }) => {
     setOpen(false);
   };
 
-  const handleSetDefaultKey = () => {
-    const defaultKey = "e8bccb552ecaed0a24a791db83129298";
-    setApiKey(defaultKey);
-    localStorage.setItem(API_KEY_STORAGE_KEY, defaultKey);
-    
-    if (onApiKeyChange) {
-      onApiKeyChange(defaultKey);
-    }
-    
-    toast({
-      title: "تم الإعداد",
-      description: "تم تعيين مفتاح API الافتراضي بنجاح.",
-    });
-    
-    setOpen(false);
-  };
-
   const savedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY);
   const hasApiKey = Boolean(savedApiKey);
 
@@ -87,17 +60,8 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onApiKeyChange }) => {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant={hasApiKey ? "outline" : "default"} size="sm" className={`${hasApiKey ? 'h-8' : ''} flex items-center gap-1`}>
-          {hasApiKey ? (
-            <>
-              <Check className="h-4 w-4 text-green-500" />
-              <Settings className="h-4 w-4" />
-            </>
-          ) : (
-            <>
-              <Settings className="h-4 w-4" />
-              <span>إضافة مفتاح API</span>
-            </>
-          )}
+          <Settings className="h-4 w-4" />
+          {!hasApiKey && <span>إضافة مفتاح API</span>}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
@@ -122,10 +86,7 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onApiKeyChange }) => {
             />
           </div>
         </div>
-        <DialogFooter className="flex flex-col sm:flex-row gap-2">
-          <Button type="button" variant="outline" onClick={handleSetDefaultKey}>
-            استخدام المفتاح الافتراضي
-          </Button>
+        <DialogFooter className="sm:justify-start">
           <Button type="button" variant="default" onClick={handleSave}>
             حفظ
           </Button>
