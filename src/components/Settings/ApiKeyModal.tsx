@@ -53,11 +53,15 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onApiKeyChange }) => {
     setOpen(false);
   };
 
+  const savedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY);
+  const hasApiKey = Boolean(savedApiKey);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="icon" className="h-8 w-8">
+        <Button variant={hasApiKey ? "outline" : "default"} size="sm" className={`${hasApiKey ? 'h-8' : ''} flex items-center gap-1`}>
           <Settings className="h-4 w-4" />
+          {!hasApiKey && <span>إضافة مفتاح API</span>}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
@@ -65,7 +69,7 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onApiKeyChange }) => {
           <DialogTitle>إعدادات API</DialogTitle>
           <DialogDescription>
             أدخل مفتاح API الخاص بك للحصول على بيانات المباريات الحقيقية.
-            يمكنك الحصول على مفتاح من <a href="https://www.football-data.org" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">football-data.org</a>
+            يمكنك الحصول على مفتاح مجاني من <a href="https://www.football-data.org" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">football-data.org</a>
           </DialogDescription>
         </DialogHeader>
         <div className="flex items-center space-x-2 rtl:space-x-reverse">
