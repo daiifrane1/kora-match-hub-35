@@ -3,6 +3,7 @@ import React from 'react';
 import MatchCard, { MatchInfo } from './MatchCard';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface MatchesSectionProps {
   title: string;
@@ -35,13 +36,25 @@ const MatchesSection: React.FC<MatchesSectionProps> = ({
         </div>
       )}
       
-      <div className={`${horizontal ? "flex flex-nowrap overflow-x-auto pb-2 gap-4" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"}`}>
-        {matches.map((match) => (
-          <div key={match.id} className={horizontal ? "flex-shrink-0 w-[300px]" : ""}>
-            <MatchCard match={match} />
+      {horizontal ? (
+        <ScrollArea className="w-full pb-2">
+          <div className="flex space-x-4 rtl:space-x-reverse pb-1 pr-1">
+            {matches.map((match) => (
+              <div key={match.id} className="flex-shrink-0 w-[300px]">
+                <MatchCard match={match} />
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </ScrollArea>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {matches.map((match) => (
+            <div key={match.id}>
+              <MatchCard match={match} />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

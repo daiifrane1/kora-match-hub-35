@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import MainLayout from '@/components/Layout/MainLayout';
 import MatchesSection from '@/components/LiveScores/MatchesSection';
@@ -26,20 +25,17 @@ const Matches = () => {
   const loadMatchData = async () => {
     setIsLoading(true);
     try {
-      // Try to fetch data from API
       const [liveData, upcomingData, finishedData] = await Promise.all([
         fetchLiveMatches(),
         fetchTodayMatches(),
         fetchFinishedMatches()
       ]);
       
-      // If we have API data, use it. Otherwise, fall back to static data
       setApiLiveMatches(liveData.length > 0 ? liveData : liveMatches);
       setApiUpcomingMatches(upcomingData.length > 0 ? upcomingData : upcomingMatches);
       setApiFinishedMatches(finishedData.length > 0 ? finishedData : finishedMatches);
       
       if (liveData.length === 0 && upcomingData.length === 0 && finishedData.length === 0) {
-        // If all API calls returned empty, we're likely using mock data
         toast({
           title: "استخدام بيانات تجريبية",
           description: "يتم استخدام بيانات تجريبية حاليًا. تحقق من مفتاح API للحصول على بيانات حقيقية.",
@@ -48,7 +44,6 @@ const Matches = () => {
       }
     } catch (error) {
       console.error("Error loading match data:", error);
-      // Fall back to static data
       setApiLiveMatches(liveMatches);
       setApiUpcomingMatches(upcomingMatches);
       setApiFinishedMatches(finishedMatches);
@@ -67,7 +62,6 @@ const Matches = () => {
     loadMatchData();
   }, []);
 
-  // Handle API key change
   const handleApiKeyChange = () => {
     loadMatchData();
     toast({
@@ -76,7 +70,6 @@ const Matches = () => {
     });
   };
 
-  // Toggle tournament filter
   const handleToggleTournament = (id: string) => {
     setSelectedTournaments(prev => 
       prev.includes(id) 
@@ -85,7 +78,6 @@ const Matches = () => {
     );
   };
 
-  // Filter matches by selected tournaments
   const filterMatches = (matches: MatchInfo[]) => {
     if (selectedTournaments.length === 0) return matches;
     return matches.filter(match => 
@@ -93,7 +85,6 @@ const Matches = () => {
     );
   };
 
-  // Group matches by league
   const renderMatchesByLeague = (matches: MatchInfo[]) => {
     const filteredMatches = filterMatches(matches);
     if (filteredMatches.length === 0) {
@@ -104,11 +95,9 @@ const Matches = () => {
       );
     }
 
-    // Group matches by league
     const matchesByLeague = groupMatchesByLeague(filteredMatches);
     
     return Object.entries(matchesByLeague).map(([leagueId, leagueMatches]) => {
-      // Get league info from the first match
       const { name, logo } = leagueMatches[0].league;
       
       return (
@@ -124,7 +113,6 @@ const Matches = () => {
     });
   };
 
-  // Render loading skeletons while data is being fetched
   const renderSkeletons = () => {
     return Array(2).fill(0).map((_, leagueIndex) => (
       <div key={leagueIndex} className="mb-8">
