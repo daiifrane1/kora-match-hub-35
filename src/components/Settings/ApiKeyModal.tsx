@@ -15,6 +15,7 @@ import { Settings } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 const API_KEY_STORAGE_KEY = "football_api_key";
+const DEFAULT_API_KEY = "e8bccb552ecaed0a24a791db83129298"; // Default API key
 
 interface ApiKeyModalProps {
   onApiKeyChange?: (apiKey: string) => void;
@@ -27,12 +28,10 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onApiKeyChange }) => {
 
   // Load saved API key on mount
   useEffect(() => {
-    const savedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY);
-    if (savedApiKey) {
-      setApiKey(savedApiKey);
-      if (onApiKeyChange) {
-        onApiKeyChange(savedApiKey);
-      }
+    const savedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY) || DEFAULT_API_KEY;
+    setApiKey(savedApiKey);
+    if (onApiKeyChange) {
+      onApiKeyChange(savedApiKey);
     }
   }, [onApiKeyChange]);
 
@@ -53,8 +52,25 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onApiKeyChange }) => {
     setOpen(false);
   };
 
+  const handleReset = () => {
+    // Reset to default API key
+    setApiKey(DEFAULT_API_KEY);
+    localStorage.setItem(API_KEY_STORAGE_KEY, DEFAULT_API_KEY);
+    
+    if (onApiKeyChange) {
+      onApiKeyChange(DEFAULT_API_KEY);
+    }
+    
+    toast({
+      title: "تم إعادة الضبط",
+      description: "تم إعادة ضبط مفتاح API إلى القيمة الافتراضية.",
+    });
+    
+    setOpen(false);
+  };
+
   const savedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY);
-  const hasApiKey = Boolean(savedApiKey);
+  const hasApiKey = Boolean(savedApiKey || DEFAULT_API_KEY);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -69,7 +85,7 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onApiKeyChange }) => {
           <DialogTitle>إعدادات API</DialogTitle>
           <DialogDescription>
             أدخل مفتاح API الخاص بك للحصول على بيانات المباريات الحقيقية.
-            يمكنك الحصول على مفتاح مجاني من <a href="https://www.football-data.org" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">football-data.org</a>
+            يمكنك الحصول على مفتاح مجاني من <a href="https://dashboard.api-football.com/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">api-football.com</a>
           </DialogDescription>
         </DialogHeader>
         <div className="flex items-center space-x-2 rtl:space-x-reverse">
@@ -86,9 +102,12 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onApiKeyChange }) => {
             />
           </div>
         </div>
-        <DialogFooter className="sm:justify-start">
+        <DialogFooter className="sm:justify-start flex gap-2">
           <Button type="button" variant="default" onClick={handleSave}>
             حفظ
+          </Button>
+          <Button type="button" variant="outline" onClick={handleReset}>
+            استخدام المفتاح الافتراضي
           </Button>
         </DialogFooter>
       </DialogContent>

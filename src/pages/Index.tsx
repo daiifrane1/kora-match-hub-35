@@ -7,7 +7,7 @@ import LeagueTable from '@/components/Standings/LeagueTable';
 import { liveMatches, upcomingMatches, finishedMatches } from '@/data/matchesData';
 import { featuredNews, latestNews } from '@/data/newsData';
 import { egyptianLeagueStandings, laLigaStandings, premierLeagueStandings } from '@/data/standingsData';
-import { fetchLiveMatches, fetchTodayMatches, fetchFinishedMatches } from '@/services/matchesApi';
+import { fetchLiveMatches, fetchTodayMatches, fetchFinishedMatches, groupMatchesByLeague } from '@/services/matchesApi';
 import { MatchInfo } from '@/components/LiveScores/MatchCard';
 
 const Index = () => {
@@ -15,6 +15,7 @@ const Index = () => {
   const [apiUpcomingMatches, setApiUpcomingMatches] = useState<MatchInfo[]>(upcomingMatches);
   const [apiFinishedMatches, setApiFinishedMatches] = useState<MatchInfo[]>(finishedMatches);
   const [isLoading, setIsLoading] = useState(true);
+  const [liveMatchesByLeague, setLiveMatchesByLeague] = useState<Record<string, MatchInfo[]>>({});
 
   useEffect(() => {
     const loadMatchData = async () => {
@@ -28,12 +29,17 @@ const Index = () => {
         ]);
         
         // If we have API data, use it. Otherwise, fall back to static data
-        if (liveData.length > 0) setApiLiveMatches(liveData);
+        if (liveData.length > 0) {
+          setApiLiveMatches(liveData);
+          // Group live matches by league
+          setLiveMatchesByLeague(groupMatchesByLeague(liveData));
+        }
         if (upcomingData.length > 0) setApiUpcomingMatches(upcomingData);
         if (finishedData.length > 0) setApiFinishedMatches(finishedData);
       } catch (error) {
         console.error("Error loading match data:", error);
         // Already using fallback data from initial state
+        setLiveMatchesByLeague(groupMatchesByLeague(liveMatches));
       } finally {
         setIsLoading(false);
       }
@@ -41,6 +47,37 @@ const Index = () => {
 
     loadMatchData();
   }, []);
+
+  // Render live matches by league
+  const renderLiveMatchesByLeague = () => {
+    if (Object.keys(liveMatchesByLeague).length === 0) {
+      return (
+        <MatchesSection 
+          title="المباريات المباشرة" 
+          matches={apiLiveMatches} 
+          showMore={true}
+          link="/matches?status=live"
+        />
+      );
+    }
+
+    return Object.entries(liveMatchesByLeague).map(([leagueId, leagueMatches]) => {
+      // Get league info from the first match
+      const { name } = leagueMatches[0].league;
+      
+      return (
+        <div key={leagueId} className="mb-6">
+          <MatchesSection
+            title={name}
+            matches={leagueMatches}
+            showMore={true}
+            link={`/matches?status=live&league=${leagueId}`}
+            horizontal={true}
+          />
+        </div>
+      );
+    });
+  };
 
   return (
     <MainLayout>
@@ -57,12 +94,7 @@ const Index = () => {
 
         {/* Live Matches Section */}
         <div className="mb-12">
-          <MatchesSection 
-            title="المباريات المباشرة" 
-            matches={apiLiveMatches} 
-            showMore={true}
-            link="/matches?status=live"
-          />
+          {renderLiveMatchesByLeague()}
         </div>
 
         {/* Featured News Section */}

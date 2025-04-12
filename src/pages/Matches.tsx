@@ -6,7 +6,7 @@ import { liveMatches, upcomingMatches, finishedMatches } from '@/data/matchesDat
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, Clock, Check } from 'lucide-react';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
-import { fetchLiveMatches, fetchTodayMatches, fetchFinishedMatches } from '@/services/matchesApi';
+import { fetchLiveMatches, fetchTodayMatches, fetchFinishedMatches, groupMatchesByLeague } from '@/services/matchesApi';
 import { MatchInfo } from '@/components/LiveScores/MatchCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from "@/components/ui/use-toast";
@@ -42,7 +42,7 @@ const Matches = () => {
         // If all API calls returned empty, we're likely using mock data
         toast({
           title: "استخدام بيانات تجريبية",
-          description: "يتم استخدام بيانات تجريبية حاليًا. أضف مفتاح API للحصول على بيانات حقيقية.",
+          description: "يتم استخدام بيانات تجريبية حاليًا. تحقق من مفتاح API للحصول على بيانات حقيقية.",
           variant: "default",
         });
       }
@@ -93,23 +93,63 @@ const Matches = () => {
     );
   };
 
+  // Group matches by league
+  const renderMatchesByLeague = (matches: MatchInfo[]) => {
+    const filteredMatches = filterMatches(matches);
+    if (filteredMatches.length === 0) {
+      return (
+        <div className="text-center py-10 text-kooora-gray">
+          <p className="text-lg">لا توجد مباريات متاحة</p>
+        </div>
+      );
+    }
+
+    // Group matches by league
+    const matchesByLeague = groupMatchesByLeague(filteredMatches);
+    
+    return Object.entries(matchesByLeague).map(([leagueId, leagueMatches]) => {
+      // Get league info from the first match
+      const { name, logo } = leagueMatches[0].league;
+      
+      return (
+        <div key={leagueId} className="mb-8">
+          <MatchesSection
+            title={name}
+            matches={leagueMatches}
+            showMore={false}
+            horizontal={true}
+          />
+        </div>
+      );
+    });
+  };
+
   // Render loading skeletons while data is being fetched
   const renderSkeletons = () => {
-    return Array(6).fill(0).map((_, index) => (
-      <div key={index} className="match-item flex-shrink-0 w-[300px]">
-        <div className="bg-white rounded-lg shadow p-4">
-          <Skeleton className="h-4 w-1/3 mb-3" />
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 rtl:space-x-reverse">
-              <Skeleton className="h-8 w-8 rounded-full" />
-              <Skeleton className="h-4 w-24" />
+    return Array(2).fill(0).map((_, leagueIndex) => (
+      <div key={leagueIndex} className="mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <Skeleton className="h-6 w-40" />
+        </div>
+        <div className="flex flex-nowrap overflow-x-auto pb-2 gap-4">
+          {Array(4).fill(0).map((_, matchIndex) => (
+            <div key={matchIndex} className="match-item flex-shrink-0 w-[300px]">
+              <div className="bg-white rounded-lg shadow p-4">
+                <Skeleton className="h-4 w-1/3 mb-3" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                  <Skeleton className="h-4 w-12" />
+                  <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                  </div>
+                </div>
+              </div>
             </div>
-            <Skeleton className="h-4 w-12" />
-            <div className="flex items-center space-x-2 rtl:space-x-reverse">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-8 w-8 rounded-full" />
-            </div>
-          </div>
+          ))}
         </div>
       </div>
     ));
@@ -169,56 +209,25 @@ const Matches = () => {
                 
                 <TabsContent value="live" className="mt-2">
                   {isLoading ? (
-                    <div className="flex flex-nowrap overflow-x-auto pb-2 gap-4">
-                      {renderSkeletons()}
-                    </div>
-                  ) : filterMatches(apiLiveMatches).length > 0 ? (
-                    <div className="bg-white rounded-lg">
-                      <MatchesSection
-                        title=""
-                        matches={filterMatches(apiLiveMatches)}
-                        showMore={false}
-                        horizontal={true}
-                      />
-                    </div>
+                    renderSkeletons()
                   ) : (
-                    <div className="text-center py-10 text-kooora-gray">
-                      <p className="text-lg">لا توجد مباريات مباشرة حالياً</p>
-                    </div>
+                    renderMatchesByLeague(apiLiveMatches)
                   )}
                 </TabsContent>
                 
                 <TabsContent value="upcoming" className="mt-2">
                   {isLoading ? (
-                    <div className="flex flex-nowrap overflow-x-auto pb-2 gap-4">
-                      {renderSkeletons()}
-                    </div>
+                    renderSkeletons()
                   ) : (
-                    <div className="bg-white rounded-lg">
-                      <MatchesSection
-                        title=""
-                        matches={filterMatches(apiUpcomingMatches)}
-                        showMore={false}
-                        horizontal={true}
-                      />
-                    </div>
+                    renderMatchesByLeague(apiUpcomingMatches)
                   )}
                 </TabsContent>
                 
                 <TabsContent value="finished" className="mt-2">
                   {isLoading ? (
-                    <div className="flex flex-nowrap overflow-x-auto pb-2 gap-4">
-                      {renderSkeletons()}
-                    </div>
+                    renderSkeletons()
                   ) : (
-                    <div className="bg-white rounded-lg">
-                      <MatchesSection
-                        title=""
-                        matches={filterMatches(apiFinishedMatches)}
-                        showMore={false}
-                        horizontal={true}
-                      />
-                    </div>
+                    renderMatchesByLeague(apiFinishedMatches)
                   )}
                 </TabsContent>
               </Tabs>

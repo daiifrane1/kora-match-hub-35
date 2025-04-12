@@ -1,65 +1,68 @@
+
 import { MatchInfo } from "@/components/LiveScores/MatchCard";
 
 // API configuration
-const API_URL = "https://api.football-data.org/v4";
+const API_URL = "https://v3.football.api-sports.io";
 const API_KEY_STORAGE_KEY = "football_api_key";
+const DEFAULT_API_KEY = "e8bccb552ecaed0a24a791db83129298"; // Default key provided
 
-// Get API key from localStorage
+// Get API key from localStorage or use default
 const getApiKey = (): string => {
-  return localStorage.getItem(API_KEY_STORAGE_KEY) || "";
+  return localStorage.getItem(API_KEY_STORAGE_KEY) || DEFAULT_API_KEY;
 };
-
-// Fetch matches interface
-interface ApiResponse {
-  matches: any[];
-  // other response fields
-}
 
 // Convert API response to our app's MatchInfo format
 const convertToMatchInfo = (apiMatch: any): MatchInfo => {
   return {
-    id: apiMatch.id.toString(),
+    id: apiMatch.fixture?.id?.toString() || "unknown",
     homeTeam: {
-      id: apiMatch.homeTeam?.id?.toString() || "unknown",
-      name: apiMatch.homeTeam?.name || "Unknown Team",
-      logo: apiMatch.homeTeam?.crest || "/placeholder.svg",
-      score: apiMatch.score?.fullTime?.home
+      id: apiMatch.teams?.home?.id?.toString() || "unknown",
+      name: apiMatch.teams?.home?.name || "Unknown Team",
+      logo: apiMatch.teams?.home?.logo || "/placeholder.svg",
+      score: apiMatch.goals?.home
     },
     awayTeam: {
-      id: apiMatch.awayTeam?.id?.toString() || "unknown",
-      name: apiMatch.awayTeam?.name || "Unknown Team",
-      logo: apiMatch.awayTeam?.crest || "/placeholder.svg",
-      score: apiMatch.score?.fullTime?.away
+      id: apiMatch.teams?.away?.id?.toString() || "unknown",
+      name: apiMatch.teams?.away?.name || "Unknown Team",
+      logo: apiMatch.teams?.away?.logo || "/placeholder.svg",
+      score: apiMatch.goals?.away
     },
-    time: apiMatch.utcDate ? new Date(apiMatch.utcDate).toLocaleTimeString('ar-EG', {
+    time: apiMatch.fixture?.date ? new Date(apiMatch.fixture.date).toLocaleTimeString('ar-EG', {
       hour: '2-digit',
       minute: '2-digit'
     }) : "00:00",
-    status: getMatchStatus(apiMatch.status),
+    status: getMatchStatus(apiMatch.fixture?.status?.short),
     league: {
-      id: apiMatch.competition?.id?.toString() || "unknown",
-      name: apiMatch.competition?.name || "Unknown League",
-      logo: apiMatch.competition?.emblem || "/placeholder.svg"
+      id: apiMatch.league?.id?.toString() || "unknown",
+      name: apiMatch.league?.name || "Unknown League",
+      logo: apiMatch.league?.logo || "/placeholder.svg"
     },
-    matchDay: `الجولة ${apiMatch.matchday || "?"}`
+    matchDay: apiMatch.league?.round || "الجولة ?"
   };
 };
 
 // Helper to determine match status
 const getMatchStatus = (apiStatus: string): "upcoming" | "live" | "finished" => {
   switch (apiStatus) {
-    case "SCHEDULED":
-    case "TIMED":
-    case "POSTPONED":
+    case "NS": // Not Started
+    case "TBD": // Time To Be Defined
+    case "PST": // Postponed
+    case "SUSP": // Suspended
+    case "INT": // Interrupted
+    case "CANC": // Cancelled
       return "upcoming";
-    case "LIVE":
-    case "IN_PLAY":
-    case "PAUSED":
+    case "1H": // First Half
+    case "HT": // Half Time
+    case "2H": // Second Half
+    case "ET": // Extra Time
+    case "P": // Penalty
+    case "BT": // Break Time
       return "live";
-    case "FINISHED":
-    case "COMPLETED":
-    case "SUSPENDED":
-    case "CANCELED":
+    case "FT": // Full-Time
+    case "AET": // After Extra Time
+    case "PEN": // Penalty Shootout
+    case "WO": // Walk Over
+    case "AWD": // Technical Loss
       return "finished";
     default:
       return "upcoming";
@@ -70,16 +73,12 @@ const getMatchStatus = (apiStatus: string): "upcoming" | "live" | "finished" => 
 export const fetchTodayMatches = async (): Promise<MatchInfo[]> => {
   try {
     const apiKey = getApiKey();
-    // Return empty array if no API key
-    if (!apiKey) {
-      console.warn("No API key provided");
-      return [];
-    }
-
+    
     const today = new Date().toISOString().split('T')[0];
-    const response = await fetch(`${API_URL}/matches?dateFrom=${today}&dateTo=${today}`, {
+    const response = await fetch(`${API_URL}/fixtures?date=${today}`, {
       headers: {
-        "X-Auth-Token": apiKey
+        "x-rapidapi-key": apiKey,
+        "x-rapidapi-host": "v3.football.api-sports.io"
       }
     });
 
@@ -87,8 +86,26 @@ export const fetchTodayMatches = async (): Promise<MatchInfo[]> => {
       throw new Error(`API error: ${response.status}`);
     }
 
-    const data: ApiResponse = await response.json();
-    return data.matches.map(convertToMatchInfo);
+    const data = await response.json();
+    
+    // Group matches by league
+    const matchesByLeague: Record<string, MatchInfo[]> = {};
+    
+    if (data.response && Array.isArray(data.response)) {
+      data.response.forEach((match: any) => {
+        const matchInfo = convertToMatchInfo(match);
+        const leagueId = matchInfo.league.id;
+        
+        if (!matchesByLeague[leagueId]) {
+          matchesByLeague[leagueId] = [];
+        }
+        
+        matchesByLeague[leagueId].push(matchInfo);
+      });
+    }
+    
+    // Return all matches for now, we'll handle grouping in the component
+    return data.response ? data.response.map(convertToMatchInfo) : [];
   } catch (error) {
     console.error("Error fetching matches:", error);
     return [];
@@ -99,14 +116,11 @@ export const fetchTodayMatches = async (): Promise<MatchInfo[]> => {
 export const fetchLiveMatches = async (): Promise<MatchInfo[]> => {
   try {
     const apiKey = getApiKey();
-    if (!apiKey) {
-      console.warn("No API key provided");
-      return [];
-    }
-
-    const response = await fetch(`${API_URL}/matches?status=LIVE`, {
+    
+    const response = await fetch(`${API_URL}/fixtures?live=all`, {
       headers: {
-        "X-Auth-Token": apiKey
+        "x-rapidapi-key": apiKey,
+        "x-rapidapi-host": "v3.football.api-sports.io"
       }
     });
 
@@ -114,8 +128,8 @@ export const fetchLiveMatches = async (): Promise<MatchInfo[]> => {
       throw new Error(`API error: ${response.status}`);
     }
 
-    const data: ApiResponse = await response.json();
-    return data.matches.map(convertToMatchInfo);
+    const data = await response.json();
+    return data.response ? data.response.map(convertToMatchInfo) : [];
   } catch (error) {
     console.error("Error fetching live matches:", error);
     return [];
@@ -126,10 +140,6 @@ export const fetchLiveMatches = async (): Promise<MatchInfo[]> => {
 export const fetchFinishedMatches = async (): Promise<MatchInfo[]> => {
   try {
     const apiKey = getApiKey();
-    if (!apiKey) {
-      console.warn("No API key provided");
-      return [];
-    }
     
     const today = new Date();
     const twoDaysAgo = new Date(today);
@@ -138,9 +148,10 @@ export const fetchFinishedMatches = async (): Promise<MatchInfo[]> => {
     const fromDate = twoDaysAgo.toISOString().split('T')[0];
     const toDate = today.toISOString().split('T')[0];
     
-    const response = await fetch(`${API_URL}/matches?dateFrom=${fromDate}&dateTo=${toDate}&status=FINISHED`, {
+    const response = await fetch(`${API_URL}/fixtures?from=${fromDate}&to=${toDate}&status=FT`, {
       headers: {
-        "X-Auth-Token": apiKey
+        "x-rapidapi-key": apiKey,
+        "x-rapidapi-host": "v3.football.api-sports.io"
       }
     });
 
@@ -148,10 +159,27 @@ export const fetchFinishedMatches = async (): Promise<MatchInfo[]> => {
       throw new Error(`API error: ${response.status}`);
     }
 
-    const data: ApiResponse = await response.json();
-    return data.matches.map(convertToMatchInfo);
+    const data = await response.json();
+    return data.response ? data.response.map(convertToMatchInfo) : [];
   } catch (error) {
     console.error("Error fetching finished matches:", error);
     return [];
   }
+};
+
+// New function to group matches by league
+export const groupMatchesByLeague = (matches: MatchInfo[]): Record<string, MatchInfo[]> => {
+  const matchesByLeague: Record<string, MatchInfo[]> = {};
+  
+  matches.forEach(match => {
+    const leagueId = match.league.id;
+    
+    if (!matchesByLeague[leagueId]) {
+      matchesByLeague[leagueId] = [];
+    }
+    
+    matchesByLeague[leagueId].push(match);
+  });
+  
+  return matchesByLeague;
 };
