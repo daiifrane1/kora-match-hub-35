@@ -40,7 +40,7 @@ const MatchesSection: React.FC<MatchesSectionProps> = ({
         <ScrollArea className="w-full pb-2">
           <div className="flex space-x-4 rtl:space-x-reverse pb-1 pr-1">
             {matches.map((match) => (
-              <div key={match.id} className="flex-shrink-0 w-[300px]">
+              <div key={match.id} className="flex-shrink-0 w-full min-w-[300px] max-w-[400px]">
                 <MatchCard match={match} />
               </div>
             ))}
@@ -49,7 +49,7 @@ const MatchesSection: React.FC<MatchesSectionProps> = ({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {matches.map((match) => (
-            <div key={match.id}>
+            <div key={match.id} className="w-full">
               <MatchCard match={match} />
             </div>
           ))}
