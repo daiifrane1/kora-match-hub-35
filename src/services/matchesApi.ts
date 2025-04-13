@@ -4,7 +4,7 @@ import { MatchInfo } from "@/components/LiveScores/MatchCard";
 // API configuration
 const API_URL = "https://v3.football.api-sports.io";
 const API_KEY_STORAGE_KEY = "football_api_key";
-const DEFAULT_API_KEY = "e8bccb552ecaed0a24a791db83129298"; // Default key provided
+const DEFAULT_API_KEY = "f6938229fc2901fcd026fd58c84df62c"; // Default key provided
 
 // Get API key from localStorage or use default
 const getApiKey = (): string => {
@@ -27,7 +27,7 @@ const convertToMatchInfo = (apiMatch: any): MatchInfo => {
       logo: apiMatch.teams?.away?.logo || "/placeholder.svg",
       score: apiMatch.goals?.away
     },
-    time: apiMatch.fixture?.date ? new Date(apiMatch.fixture.date).toLocaleTimeString('ar-EG', {
+    time: apiMatch.fixture?.date ? new Date(apiMatch.fixture.date).toLocaleTimeString('FR-EG', {
       hour: '2-digit',
       minute: '2-digit'
     }) : "00:00",
@@ -75,7 +75,7 @@ export const fetchTodayMatches = async (): Promise<MatchInfo[]> => {
     const apiKey = getApiKey();
     
     const today = new Date().toISOString().split('T')[0];
-    const response = await fetch(`${API_URL}/fixtures?date=${today}`, {
+    const response = await fetch(`${API_URL}/fixtures?date=${today}&status=NS`, {
       headers: {
         "x-rapidapi-key": apiKey,
         "x-rapidapi-host": "v3.football.api-sports.io"
@@ -148,7 +148,7 @@ export const fetchFinishedMatches = async (): Promise<MatchInfo[]> => {
     const fromDate = twoDaysAgo.toISOString().split('T')[0];
     const toDate = today.toISOString().split('T')[0];
     
-    const response = await fetch(`${API_URL}/fixtures?from=${fromDate}&to=${toDate}&status=FT`, {
+    const response = await fetch(`${API_URL}/fixtures?date=${toDate}&status=FT`, {
       headers: {
         "x-rapidapi-key": apiKey,
         "x-rapidapi-host": "v3.football.api-sports.io"
