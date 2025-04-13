@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 interface MatchesSectionProps {
   title: string;
   matches: MatchInfo[];
+  logo?: string;
   showMore?: boolean;
   link?: string;
   horizontal?: boolean;
@@ -15,7 +16,8 @@ interface MatchesSectionProps {
 
 const MatchesSection: React.FC<MatchesSectionProps> = ({ 
   title, 
-  matches, 
+  matches,
+  logo,
   showMore = false,
   link = "/matches",
   horizontal = false
@@ -24,7 +26,12 @@ const MatchesSection: React.FC<MatchesSectionProps> = ({
     <div className="mb-8">
       {title && (
         <div className="flex justify-between items-center mb-4">
-          <h2 className="section-title">{title}</h2>
+          <div className="flex items-center">
+            {logo && (
+              <img src={logo} alt={title} className="w-6 h-6 mr-2 rtl:ml-2 rtl:mr-0 object-contain" />
+            )}
+            <h2 className="section-title">{title}</h2>
+          </div>
           {showMore && (
             <Button variant="link" className="text-kooora-primary" asChild>
               <a href={link} className="flex items-center">

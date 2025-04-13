@@ -32,12 +32,13 @@ const MatchesByLeague: React.FC<MatchesByLeagueProps> = ({ matches, selectedTour
   return (
     <>
       {Object.entries(matchesByLeague).map(([leagueId, leagueMatches]) => {
-        const { name } = leagueMatches[0].league;
+        const { name, logo } = leagueMatches[0].league;
         
         return (
           <div key={leagueId} className="mb-8">
             <MatchesSection
               title={name}
+              logo={logo}
               matches={leagueMatches}
               showMore={false}
               horizontal={true}

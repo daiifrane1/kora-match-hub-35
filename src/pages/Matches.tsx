@@ -1,18 +1,20 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import MainLayout from '@/components/Layout/MainLayout';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, Clock, Check } from 'lucide-react';
 import ApiKeyModal from '@/components/Settings/ApiKeyModal';
 import TournamentFilter from '@/components/LiveScores/TournamentFilter';
-import { tournaments } from '@/data/tournamentsData';
+import { placeholderTournaments, fetchLeagues } from '@/data/tournamentsData';
 import { useMatchData } from '@/hooks/useMatchData';
 import MatchesTabContent from '@/components/LiveScores/MatchesTabContent';
 import MatchesPagination from '@/components/LiveScores/MatchesPagination';
+import { Tournament } from '@/components/LiveScores/TournamentFilter';
 
 const Matches = () => {
   const [activeTab, setActiveTab] = useState("live");
   const [selectedTournaments, setSelectedTournaments] = useState<string[]>([]);
+  const [tournaments, setTournaments] = useState<Tournament[]>(placeholderTournaments);
   const { 
     apiLiveMatches, 
     apiUpcomingMatches, 
@@ -20,6 +22,19 @@ const Matches = () => {
     isLoading, 
     handleApiKeyChange 
   } = useMatchData();
+
+  useEffect(() => {
+    const loadTournaments = async () => {
+      try {
+        const data = await fetchLeagues();
+        setTournaments(data);
+      } catch (error) {
+        console.error("Error loading tournaments:", error);
+      }
+    };
+    
+    loadTournaments();
+  }, []);
 
   const handleToggleTournament = (id: string) => {
     setSelectedTournaments(prev => 
