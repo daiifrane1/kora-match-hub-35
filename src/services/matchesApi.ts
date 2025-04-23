@@ -1,14 +1,12 @@
-
 import { MatchInfo } from "@/components/LiveScores/MatchCard";
 
 // API configuration
 const API_URL = "https://v3.football.api-sports.io";
 const API_KEY_STORAGE_KEY = "football_api_key";
-const DEFAULT_API_KEY = "f6938229fc2901fcd026fd58c84df62c"; // Default key provided
 
-// Get API key from localStorage or use default
+// Get API key from localStorage
 const getApiKey = (): string => {
-  return localStorage.getItem(API_KEY_STORAGE_KEY) || DEFAULT_API_KEY;
+  return localStorage.getItem(API_KEY_STORAGE_KEY) || '';
 };
 
 // Convert API response to our app's MatchInfo format
@@ -74,6 +72,10 @@ export const fetchTodayMatches = async (): Promise<MatchInfo[]> => {
   try {
     const apiKey = getApiKey();
     
+    if (!apiKey) {
+      throw new Error('No API key provided');
+    }
+
     const today = new Date().toISOString().split('T')[0];
     const response = await fetch(`${API_URL}/fixtures?date=${today}&status=NS`, {
       headers: {
@@ -88,27 +90,14 @@ export const fetchTodayMatches = async (): Promise<MatchInfo[]> => {
 
     const data = await response.json();
     
-    // Group matches by league
-    const matchesByLeague: Record<string, MatchInfo[]> = {};
-    
-    if (data.response && Array.isArray(data.response)) {
-      data.response.forEach((match: any) => {
-        const matchInfo = convertToMatchInfo(match);
-        const leagueId = matchInfo.league.id;
-        
-        if (!matchesByLeague[leagueId]) {
-          matchesByLeague[leagueId] = [];
-        }
-        
-        matchesByLeague[leagueId].push(matchInfo);
-      });
+    if (data.errors && Object.keys(data.errors).length > 0) {
+      throw new Error(Object.values(data.errors)[0] as string);
     }
-    
-    // Return all matches for now, we'll handle grouping in the component
+
     return data.response ? data.response.map(convertToMatchInfo) : [];
   } catch (error) {
     console.error("Error fetching matches:", error);
-    return [];
+    throw error;
   }
 };
 
@@ -117,6 +106,10 @@ export const fetchLiveMatches = async (): Promise<MatchInfo[]> => {
   try {
     const apiKey = getApiKey();
     
+    if (!apiKey) {
+      throw new Error('No API key provided');
+    }
+
     const response = await fetch(`${API_URL}/fixtures?live=all`, {
       headers: {
         "x-rapidapi-key": apiKey,
@@ -129,26 +122,31 @@ export const fetchLiveMatches = async (): Promise<MatchInfo[]> => {
     }
 
     const data = await response.json();
+    
+    if (data.errors && Object.keys(data.errors).length > 0) {
+      throw new Error(Object.values(data.errors)[0] as string);
+    }
+
     return data.response ? data.response.map(convertToMatchInfo) : [];
   } catch (error) {
     console.error("Error fetching live matches:", error);
-    return [];
+    throw error;
   }
 };
 
-// Fetch finished matches (last 2 days)
+// Fetch finished matches
 export const fetchFinishedMatches = async (): Promise<MatchInfo[]> => {
   try {
     const apiKey = getApiKey();
     
+    if (!apiKey) {
+      throw new Error('No API key provided');
+    }
+
     const today = new Date();
-    const twoDaysAgo = new Date(today);
-    twoDaysAgo.setDate(today.getDate() - 2);
+    const fromDate = today.toISOString().split('T')[0];
     
-    const fromDate = twoDaysAgo.toISOString().split('T')[0];
-    const toDate = today.toISOString().split('T')[0];
-    
-    const response = await fetch(`${API_URL}/fixtures?date=${toDate}&status=FT`, {
+    const response = await fetch(`${API_URL}/fixtures?date=${fromDate}&status=FT`, {
       headers: {
         "x-rapidapi-key": apiKey,
         "x-rapidapi-host": "v3.football.api-sports.io"
@@ -160,10 +158,15 @@ export const fetchFinishedMatches = async (): Promise<MatchInfo[]> => {
     }
 
     const data = await response.json();
+    
+    if (data.errors && Object.keys(data.errors).length > 0) {
+      throw new Error(Object.values(data.errors)[0] as string);
+    }
+
     return data.response ? data.response.map(convertToMatchInfo) : [];
   } catch (error) {
     console.error("Error fetching finished matches:", error);
-    return [];
+    throw error;
   }
 };
 

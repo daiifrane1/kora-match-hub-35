@@ -29,24 +29,30 @@ export function useMatchData() {
       setApiUpcomingMatches(upcomingData.length > 0 ? upcomingData : upcomingMatches);
       setApiFinishedMatches(finishedData.length > 0 ? finishedData : finishedMatches);
       
-      if (liveData.length === 0 && upcomingData.length === 0 && finishedData.length === 0) {
-        toast({
-          title: "استخدام بيانات تجريبية",
-          description: "يتم استخدام بيانات تجريبية حاليًا. تحقق من مفتاح API للحصول على بيانات حقيقية.",
-          variant: "default",
-        });
-      }
     } catch (error) {
       console.error("Error loading match data:", error);
+      
+      // Set fallback data
       setApiLiveMatches(liveMatches);
       setApiUpcomingMatches(upcomingMatches);
       setApiFinishedMatches(finishedMatches);
       
-      toast({
-        title: "خطأ في تحميل البيانات",
-        description: "حدث خطأ أثناء تحميل بيانات المباريات. يتم استخدام بيانات تجريبية بدلاً من ذلك.",
-        variant: "destructive",
-      });
+      // Show appropriate error message
+      if (error instanceof Error) {
+        if (error.message.includes('No API key provided')) {
+          toast({
+            title: "مفتاح API مطلوب",
+            description: "الرجاء إضافة مفتاح API في الإعدادات للحصول على البيانات المباشرة.",
+            variant: "default",
+          });
+        } else {
+          toast({
+            title: "خطأ في تحميل البيانات",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
+      }
     } finally {
       setIsLoading(false);
     }
@@ -59,8 +65,8 @@ export function useMatchData() {
   const handleApiKeyChange = () => {
     loadMatchData();
     toast({
-      title: "تم تحديث مفتاح API",
-      description: "جاري تحديث البيانات باستخدام المفتاح الجديد.",
+      title: "جاري التحديث",
+      description: "يتم تحديث البيانات باستخدام المفتاح الجديد.",
     });
   };
 

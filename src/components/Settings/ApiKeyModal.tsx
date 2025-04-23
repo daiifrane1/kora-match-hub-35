@@ -11,11 +11,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Settings } from "lucide-react";
+import { Settings, ExternalLink } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const API_KEY_STORAGE_KEY = "football_api_key";
-const DEFAULT_API_KEY = "e8bccb552ecaed0a24a791db83129298"; // Default API key
 
 interface ApiKeyModalProps {
   onApiKeyChange?: (apiKey: string) => void;
@@ -26,20 +26,26 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onApiKeyChange }) => {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
 
-  // Load saved API key on mount
   useEffect(() => {
-    const savedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY) || DEFAULT_API_KEY;
+    const savedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY) || '';
     setApiKey(savedApiKey);
-    if (onApiKeyChange) {
+    if (onApiKeyChange && savedApiKey) {
       onApiKeyChange(savedApiKey);
     }
   }, [onApiKeyChange]);
 
   const handleSave = () => {
-    // Save API key to localStorage
+    if (!apiKey.trim()) {
+      toast({
+        title: "خطأ",
+        description: "الرجاء إدخال مفتاح API صالح",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     localStorage.setItem(API_KEY_STORAGE_KEY, apiKey);
     
-    // Notify parent component
     if (onApiKeyChange) {
       onApiKeyChange(apiKey);
     }
@@ -52,32 +58,28 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onApiKeyChange }) => {
     setOpen(false);
   };
 
-  const handleReset = () => {
-    // Reset to default API key
-    setApiKey(DEFAULT_API_KEY);
-    localStorage.setItem(API_KEY_STORAGE_KEY, DEFAULT_API_KEY);
+  const handleClear = () => {
+    setApiKey('');
+    localStorage.removeItem(API_KEY_STORAGE_KEY);
     
     if (onApiKeyChange) {
-      onApiKeyChange(DEFAULT_API_KEY);
+      onApiKeyChange('');
     }
     
     toast({
-      title: "تم إعادة الضبط",
-      description: "تم إعادة ضبط مفتاح API إلى القيمة الافتراضية.",
+      title: "تم المسح",
+      description: "تم مسح مفتاح API.",
     });
     
     setOpen(false);
   };
 
-  const savedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY);
-  const hasApiKey = Boolean(savedApiKey || DEFAULT_API_KEY);
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant={hasApiKey ? "outline" : "default"} size="sm" className={`${hasApiKey ? 'h-8' : ''} flex items-center gap-1`}>
+        <Button variant="outline" size="sm" className="h-8 flex items-center gap-1">
           <Settings className="h-4 w-4" />
-          {!hasApiKey && <span>إضافة مفتاح API</span>}
+          <span>إعدادات API</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
@@ -85,9 +87,23 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onApiKeyChange }) => {
           <DialogTitle>إعدادات API</DialogTitle>
           <DialogDescription>
             أدخل مفتاح API الخاص بك للحصول على بيانات المباريات الحقيقية.
-            يمكنك الحصول على مفتاح مجاني من <a href="https://dashboard.api-football.com/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">api-football.com</a>
           </DialogDescription>
         </DialogHeader>
+        
+        <Alert className="my-4">
+          <AlertDescription>
+            <p className="mb-2">للحصول على مفتاح API مجاني:</p>
+            <ol className="list-decimal list-inside space-y-2">
+              <li>قم بزيارة <a href="https://dashboard.api-football.com/register" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline inline-flex items-center">
+                dashboard.api-football.com/register
+                <ExternalLink className="h-3 w-3 mr-1" />
+              </a></li>
+              <li>سجل حساب جديد واختر الخطة المجانية</li>
+              <li>انسخ مفتاح API وألصقه هنا</li>
+            </ol>
+          </AlertDescription>
+        </Alert>
+
         <div className="flex items-center space-x-2 rtl:space-x-reverse">
           <div className="grid flex-1 gap-2">
             <label htmlFor="apiKey" className="text-sm font-medium">
@@ -99,6 +115,8 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onApiKeyChange }) => {
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="أدخل مفتاح API هنا"
+              className="text-left"
+              dir="ltr"
             />
           </div>
         </div>
@@ -106,8 +124,8 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onApiKeyChange }) => {
           <Button type="button" variant="default" onClick={handleSave}>
             حفظ
           </Button>
-          <Button type="button" variant="outline" onClick={handleReset}>
-            استخدام المفتاح الافتراضي
+          <Button type="button" variant="outline" onClick={handleClear}>
+            مسح المفتاح
           </Button>
         </DialogFooter>
       </DialogContent>
