@@ -1,113 +1,120 @@
 
 import { MatchInfo } from "@/components/LiveScores/MatchCard";
+import { toast } from "@/components/ui/use-toast";
 
 // API configuration
-const API_URL = "https://v3.football.api-sports.io";
+const API_URL = "https://api.football-data.org/v4";
 const API_KEY_STORAGE_KEY = "football_api_key";
-const DEFAULT_API_KEY = "f6938229fc2901fcd026fd58c84df62c"; // Default key provided
+
+// Default API key as fallback
+const DEFAULT_API_KEY = "e8bccb552ecaed0a24a791db83129298";
 
 // Get API key from localStorage or use default
 const getApiKey = (): string => {
   return localStorage.getItem(API_KEY_STORAGE_KEY) || DEFAULT_API_KEY;
 };
 
+// Fetch matches interface
+interface ApiResponse {
+  matches: any[];
+  // other response fields
+}
+
 // Convert API response to our app's MatchInfo format
 const convertToMatchInfo = (apiMatch: any): MatchInfo => {
   return {
-    id: apiMatch.fixture?.id?.toString() || "unknown",
+    id: apiMatch.id.toString(),
     homeTeam: {
-      id: apiMatch.teams?.home?.id?.toString() || "unknown",
-      name: apiMatch.teams?.home?.name || "Unknown Team",
-      logo: apiMatch.teams?.home?.logo || "/placeholder.svg",
-      score: apiMatch.goals?.home
+      id: apiMatch.homeTeam?.id?.toString() || "unknown",
+      name: apiMatch.homeTeam?.name || "Unknown Team",
+      logo: apiMatch.homeTeam?.crest || "/placeholder.svg",
+      score: apiMatch.score?.fullTime?.home !== null ? apiMatch.score?.fullTime?.home : apiMatch.score?.halfTime?.home
     },
     awayTeam: {
-      id: apiMatch.teams?.away?.id?.toString() || "unknown",
-      name: apiMatch.teams?.away?.name || "Unknown Team",
-      logo: apiMatch.teams?.away?.logo || "/placeholder.svg",
-      score: apiMatch.goals?.away
+      id: apiMatch.awayTeam?.id?.toString() || "unknown",
+      name: apiMatch.awayTeam?.name || "Unknown Team",
+      logo: apiMatch.awayTeam?.crest || "/placeholder.svg",
+      score: apiMatch.score?.fullTime?.away !== null ? apiMatch.score?.fullTime?.away : apiMatch.score?.halfTime?.away
     },
-    time: apiMatch.fixture?.date ? new Date(apiMatch.fixture.date).toLocaleTimeString('FR-EG', {
+    time: apiMatch.utcDate ? new Date(apiMatch.utcDate).toLocaleTimeString('ar-EG', {
       hour: '2-digit',
       minute: '2-digit'
     }) : "00:00",
-    status: getMatchStatus(apiMatch.fixture?.status?.short),
+    status: getMatchStatus(apiMatch.status),
     league: {
-      id: apiMatch.league?.id?.toString() || "unknown",
-      name: apiMatch.league?.name || "Unknown League",
-      logo: apiMatch.league?.logo || "/placeholder.svg"
+      id: apiMatch.competition?.id?.toString() || "unknown",
+      name: apiMatch.competition?.name || "Unknown League",
+      logo: apiMatch.competition?.emblem || "/placeholder.svg"
     },
-    matchDay: apiMatch.league?.round || "الجولة ?"
+    matchDay: `الجولة ${apiMatch.matchday || "?"}`
   };
 };
 
 // Helper to determine match status
 const getMatchStatus = (apiStatus: string): "upcoming" | "live" | "finished" => {
   switch (apiStatus) {
-    case "NS": // Not Started
-    case "TBD": // Time To Be Defined
-    case "PST": // Postponed
-    case "SUSP": // Suspended
-    case "INT": // Interrupted
-    case "CANC": // Cancelled
+    case "SCHEDULED":
+    case "TIMED":
+    case "POSTPONED":
       return "upcoming";
-    case "1H": // First Half
-    case "HT": // Half Time
-    case "2H": // Second Half
-    case "ET": // Extra Time
-    case "P": // Penalty
-    case "BT": // Break Time
+    case "LIVE":
+    case "IN_PLAY":
+    case "PAUSED":
       return "live";
-    case "FT": // Full-Time
-    case "AET": // After Extra Time
-    case "PEN": // Penalty Shootout
-    case "WO": // Walk Over
-    case "AWD": // Technical Loss
+    case "FINISHED":
+    case "COMPLETED":
+    case "SUSPENDED":
+    case "CANCELED":
       return "finished";
     default:
       return "upcoming";
   }
 };
 
-// Fetch today's matches
-export const fetchTodayMatches = async (): Promise<MatchInfo[]> => {
+// Generic API fetch function with error handling
+const fetchFromAPI = async (endpoint: string): Promise<any> => {
+  const apiKey = getApiKey();
+  
   try {
-    const apiKey = getApiKey();
+    console.log(`Fetching from ${API_URL}${endpoint} with API key ${apiKey.substring(0, 5)}...`);
     
-    const today = new Date().toISOString().split('T')[0];
-    const response = await fetch(`${API_URL}/fixtures?date=${today}&status=NS`, {
+    const response = await fetch(`${API_URL}${endpoint}`, {
       headers: {
-        "x-rapidapi-key": apiKey,
-        "x-rapidapi-host": "v3.football.api-sports.io"
+        "X-Auth-Token": apiKey
       }
     });
 
     if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+      const errorData = await response.json().catch(() => null);
+      console.error("API Error:", response.status, errorData);
+      
+      if (response.status === 403 || response.status === 401) {
+        throw new Error("مفتاح API غير صالح. الرجاء التحقق من المفتاح وإعادة المحاولة.");
+      } else {
+        throw new Error(`خطأ في الاتصال بواجهة API: ${response.status}`);
+      }
     }
 
-    const data = await response.json();
-    
-    // Group matches by league
-    const matchesByLeague: Record<string, MatchInfo[]> = {};
-    
-    if (data.response && Array.isArray(data.response)) {
-      data.response.forEach((match: any) => {
-        const matchInfo = convertToMatchInfo(match);
-        const leagueId = matchInfo.league.id;
-        
-        if (!matchesByLeague[leagueId]) {
-          matchesByLeague[leagueId] = [];
-        }
-        
-        matchesByLeague[leagueId].push(matchInfo);
-      });
-    }
-    
-    // Return all matches for now, we'll handle grouping in the component
-    return data.response ? data.response.map(convertToMatchInfo) : [];
+    return await response.json();
   } catch (error) {
-    console.error("Error fetching matches:", error);
+    console.error("Error fetching data:", error);
+    throw error;
+  }
+};
+
+// Fetch today's matches
+export const fetchTodayMatches = async (): Promise<MatchInfo[]> => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const data = await fetchFromAPI(`/matches?dateFrom=${today}&dateTo=${today}`);
+    return data.matches.map(convertToMatchInfo);
+  } catch (error: any) {
+    console.error("Error fetching today's matches:", error);
+    toast({
+      title: "خطأ في تحميل مباريات اليوم",
+      description: error.message || "تعذر تحميل مباريات اليوم. جاري استخدام بيانات تجريبية.",
+      variant: "destructive",
+    });
     return [];
   }
 };
@@ -115,23 +122,15 @@ export const fetchTodayMatches = async (): Promise<MatchInfo[]> => {
 // Fetch live matches
 export const fetchLiveMatches = async (): Promise<MatchInfo[]> => {
   try {
-    const apiKey = getApiKey();
-    
-    const response = await fetch(`${API_URL}/fixtures?live=all`, {
-      headers: {
-        "x-rapidapi-key": apiKey,
-        "x-rapidapi-host": "v3.football.api-sports.io"
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data.response ? data.response.map(convertToMatchInfo) : [];
-  } catch (error) {
+    const data = await fetchFromAPI(`/matches?status=LIVE`);
+    return data.matches.map(convertToMatchInfo);
+  } catch (error: any) {
     console.error("Error fetching live matches:", error);
+    toast({
+      title: "خطأ في تحميل المباريات المباشرة",
+      description: error.message || "تعذر تحميل المباريات المباشرة. جاري استخدام بيانات تجريبية.",
+      variant: "destructive",
+    });
     return [];
   }
 };
@@ -139,8 +138,6 @@ export const fetchLiveMatches = async (): Promise<MatchInfo[]> => {
 // Fetch finished matches (last 2 days)
 export const fetchFinishedMatches = async (): Promise<MatchInfo[]> => {
   try {
-    const apiKey = getApiKey();
-    
     const today = new Date();
     const twoDaysAgo = new Date(today);
     twoDaysAgo.setDate(today.getDate() - 2);
@@ -148,38 +145,15 @@ export const fetchFinishedMatches = async (): Promise<MatchInfo[]> => {
     const fromDate = twoDaysAgo.toISOString().split('T')[0];
     const toDate = today.toISOString().split('T')[0];
     
-    const response = await fetch(`${API_URL}/fixtures?date=${toDate}&status=FT`, {
-      headers: {
-        "x-rapidapi-key": apiKey,
-        "x-rapidapi-host": "v3.football.api-sports.io"
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data.response ? data.response.map(convertToMatchInfo) : [];
-  } catch (error) {
+    const data = await fetchFromAPI(`/matches?dateFrom=${fromDate}&dateTo=${toDate}&status=FINISHED`);
+    return data.matches.map(convertToMatchInfo);
+  } catch (error: any) {
     console.error("Error fetching finished matches:", error);
+    toast({
+      title: "خطأ في تحميل نتائج المباريات",
+      description: error.message || "تعذر تحميل نتائج المباريات. جاري استخدام بيانات تجريبية.",
+      variant: "destructive",
+    });
     return [];
   }
-};
-
-// New function to group matches by league
-export const groupMatchesByLeague = (matches: MatchInfo[]): Record<string, MatchInfo[]> => {
-  const matchesByLeague: Record<string, MatchInfo[]> = {};
-  
-  matches.forEach(match => {
-    const leagueId = match.league.id;
-    
-    if (!matchesByLeague[leagueId]) {
-      matchesByLeague[leagueId] = [];
-    }
-    
-    matchesByLeague[leagueId].push(match);
-  });
-  
-  return matchesByLeague;
 };

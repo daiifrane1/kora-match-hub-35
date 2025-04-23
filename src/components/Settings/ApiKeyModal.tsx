@@ -11,11 +11,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Settings } from "lucide-react";
+import { Settings, Check } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 const API_KEY_STORAGE_KEY = "football_api_key";
-const DEFAULT_API_KEY = "e8bccb552ecaed0a24a791db83129298"; // Default API key
 
 interface ApiKeyModalProps {
   onApiKeyChange?: (apiKey: string) => void;
@@ -28,14 +27,26 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onApiKeyChange }) => {
 
   // Load saved API key on mount
   useEffect(() => {
-    const savedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY) || DEFAULT_API_KEY;
-    setApiKey(savedApiKey);
-    if (onApiKeyChange) {
-      onApiKeyChange(savedApiKey);
+    const savedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY);
+    if (savedApiKey) {
+      setApiKey(savedApiKey);
+      if (onApiKeyChange) {
+        onApiKeyChange(savedApiKey);
+      }
     }
   }, [onApiKeyChange]);
 
   const handleSave = () => {
+    // Validate API key format (basic validation)
+    if (!apiKey.trim()) {
+      toast({
+        title: "خطأ",
+        description: "الرجاء إدخال مفتاح API صالح.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     // Save API key to localStorage
     localStorage.setItem(API_KEY_STORAGE_KEY, apiKey);
     
@@ -52,32 +63,41 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onApiKeyChange }) => {
     setOpen(false);
   };
 
-  const handleReset = () => {
-    // Reset to default API key
-    setApiKey(DEFAULT_API_KEY);
-    localStorage.setItem(API_KEY_STORAGE_KEY, DEFAULT_API_KEY);
+  const handleSetDefaultKey = () => {
+    const defaultKey = "e8bccb552ecaed0a24a791db83129298";
+    setApiKey(defaultKey);
+    localStorage.setItem(API_KEY_STORAGE_KEY, defaultKey);
     
     if (onApiKeyChange) {
-      onApiKeyChange(DEFAULT_API_KEY);
+      onApiKeyChange(defaultKey);
     }
     
     toast({
-      title: "تم إعادة الضبط",
-      description: "تم إعادة ضبط مفتاح API إلى القيمة الافتراضية.",
+      title: "تم الإعداد",
+      description: "تم تعيين مفتاح API الافتراضي بنجاح.",
     });
     
     setOpen(false);
   };
 
   const savedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY);
-  const hasApiKey = Boolean(savedApiKey || DEFAULT_API_KEY);
+  const hasApiKey = Boolean(savedApiKey);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant={hasApiKey ? "outline" : "default"} size="sm" className={`${hasApiKey ? 'h-8' : ''} flex items-center gap-1`}>
-          <Settings className="h-4 w-4" />
-          {!hasApiKey && <span>إضافة مفتاح API</span>}
+          {hasApiKey ? (
+            <>
+              <Check className="h-4 w-4 text-green-500" />
+              <Settings className="h-4 w-4" />
+            </>
+          ) : (
+            <>
+              <Settings className="h-4 w-4" />
+              <span>إضافة مفتاح API</span>
+            </>
+          )}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
@@ -85,7 +105,7 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onApiKeyChange }) => {
           <DialogTitle>إعدادات API</DialogTitle>
           <DialogDescription>
             أدخل مفتاح API الخاص بك للحصول على بيانات المباريات الحقيقية.
-            يمكنك الحصول على مفتاح مجاني من <a href="https://dashboard.api-football.com/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">api-football.com</a>
+            يمكنك الحصول على مفتاح مجاني من <a href="https://www.football-data.org" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">football-data.org</a>
           </DialogDescription>
         </DialogHeader>
         <div className="flex items-center space-x-2 rtl:space-x-reverse">
@@ -102,12 +122,12 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onApiKeyChange }) => {
             />
           </div>
         </div>
-        <DialogFooter className="sm:justify-start flex gap-2">
+        <DialogFooter className="flex flex-col sm:flex-row gap-2">
+          <Button type="button" variant="outline" onClick={handleSetDefaultKey}>
+            استخدام المفتاح الافتراضي
+          </Button>
           <Button type="button" variant="default" onClick={handleSave}>
             حفظ
-          </Button>
-          <Button type="button" variant="outline" onClick={handleReset}>
-            استخدام المفتاح الافتراضي
           </Button>
         </DialogFooter>
       </DialogContent>

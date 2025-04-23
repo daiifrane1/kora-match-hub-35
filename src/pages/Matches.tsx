@@ -1,47 +1,118 @@
 
 import React, { useState, useEffect } from 'react';
 import MainLayout from '@/components/Layout/MainLayout';
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import MatchesSection from '@/components/LiveScores/MatchesSection';
+import { liveMatches, upcomingMatches, finishedMatches } from '@/data/matchesData';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, Clock, Check } from 'lucide-react';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { fetchLiveMatches, fetchTodayMatches, fetchFinishedMatches } from '@/services/matchesApi';
+import { MatchInfo } from '@/components/LiveScores/MatchCard';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from "@/components/ui/use-toast";
 import ApiKeyModal from '@/components/Settings/ApiKeyModal';
 import TournamentFilter from '@/components/LiveScores/TournamentFilter';
-import { placeholderTournaments, fetchLeagues } from '@/data/tournamentsData';
-import { useMatchData } from '@/hooks/useMatchData';
-import MatchesTabContent from '@/components/LiveScores/MatchesTabContent';
-import MatchesPagination from '@/components/LiveScores/MatchesPagination';
-import { Tournament } from '@/components/LiveScores/TournamentFilter';
+import { tournaments } from '@/data/tournamentsData';
 
 const Matches = () => {
   const [activeTab, setActiveTab] = useState("live");
+  const [apiLiveMatches, setApiLiveMatches] = useState<MatchInfo[]>([]);
+  const [apiUpcomingMatches, setApiUpcomingMatches] = useState<MatchInfo[]>([]);
+  const [apiFinishedMatches, setApiFinishedMatches] = useState<MatchInfo[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedTournaments, setSelectedTournaments] = useState<string[]>([]);
-  const [tournaments, setTournaments] = useState<Tournament[]>(placeholderTournaments);
-  const { 
-    apiLiveMatches, 
-    apiUpcomingMatches, 
-    apiFinishedMatches, 
-    isLoading, 
-    handleApiKeyChange 
-  } = useMatchData();
+  const { toast } = useToast();
+
+  const loadMatchData = async () => {
+    setIsLoading(true);
+    try {
+      // Try to fetch data from API
+      const [liveData, upcomingData, finishedData] = await Promise.all([
+        fetchLiveMatches(),
+        fetchTodayMatches(),
+        fetchFinishedMatches()
+      ]);
+      
+      // If we have API data, use it. Otherwise, fall back to static data
+      setApiLiveMatches(liveData.length > 0 ? liveData : liveMatches);
+      setApiUpcomingMatches(upcomingData.length > 0 ? upcomingData : upcomingMatches);
+      setApiFinishedMatches(finishedData.length > 0 ? finishedData : finishedMatches);
+      
+      if (liveData.length === 0 && upcomingData.length === 0 && finishedData.length === 0) {
+        // If all API calls returned empty, we're likely using mock data
+        toast({
+          title: "استخدام بيانات تجريبية",
+          description: "يتم استخدام بيانات تجريبية حاليًا. أضف مفتاح API للحصول على بيانات حقيقية.",
+          variant: "default",
+        });
+      }
+    } catch (error) {
+      console.error("Error loading match data:", error);
+      // Fall back to static data
+      setApiLiveMatches(liveMatches);
+      setApiUpcomingMatches(upcomingMatches);
+      setApiFinishedMatches(finishedMatches);
+      
+      toast({
+        title: "خطأ في تحميل البيانات",
+        description: "حدث خطأ أثناء تحميل بيانات المباريات. يتم استخدام بيانات تجريبية بدلاً من ذلك.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadTournaments = async () => {
-      try {
-        const data = await fetchLeagues();
-        setTournaments(data);
-      } catch (error) {
-        console.error("Error loading tournaments:", error);
-      }
-    };
-    
-    loadTournaments();
+    loadMatchData();
   }, []);
 
+  // Handle API key change
+  const handleApiKeyChange = () => {
+    loadMatchData();
+    toast({
+      title: "تم تحديث مفتاح API",
+      description: "جاري تحديث البيانات باستخدام المفتاح الجديد.",
+    });
+  };
+
+  // Toggle tournament filter
   const handleToggleTournament = (id: string) => {
     setSelectedTournaments(prev => 
       prev.includes(id) 
         ? prev.filter(t => t !== id) 
         : [...prev, id]
     );
+  };
+
+  // Filter matches by selected tournaments
+  const filterMatches = (matches: MatchInfo[]) => {
+    if (selectedTournaments.length === 0) return matches;
+    return matches.filter(match => 
+      selectedTournaments.includes(match.league.id)
+    );
+  };
+
+  // Render loading skeletons while data is being fetched
+  const renderSkeletons = () => {
+    return Array(6).fill(0).map((_, index) => (
+      <div key={index} className="match-item flex-shrink-0 w-[300px]">
+        <div className="bg-white rounded-lg shadow p-4">
+          <Skeleton className="h-4 w-1/3 mb-3" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 rtl:space-x-reverse">
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+            <Skeleton className="h-4 w-12" />
+            <div className="flex items-center space-x-2 rtl:space-x-reverse">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-8 w-8 rounded-full" />
+            </div>
+          </div>
+        </div>
+      </div>
+    ));
   };
 
   return (
@@ -96,31 +167,85 @@ const Matches = () => {
                   </TabsTrigger>
                 </TabsList>
                 
-                <MatchesTabContent 
-                  tabId="live"
-                  matches={apiLiveMatches}
-                  isLoading={isLoading}
-                  selectedTournaments={selectedTournaments}
-                />
+                <TabsContent value="live" className="mt-2">
+                  {isLoading ? (
+                    <div className="flex flex-nowrap overflow-x-auto pb-2 gap-4">
+                      {renderSkeletons()}
+                    </div>
+                  ) : filterMatches(apiLiveMatches).length > 0 ? (
+                    <div className="bg-white rounded-lg">
+                      <MatchesSection
+                        title=""
+                        matches={filterMatches(apiLiveMatches)}
+                        showMore={false}
+                        horizontal={true}
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-center py-10 text-kooora-gray">
+                      <p className="text-lg">لا توجد مباريات مباشرة حالياً</p>
+                    </div>
+                  )}
+                </TabsContent>
                 
-                <MatchesTabContent 
-                  tabId="upcoming"
-                  matches={apiUpcomingMatches}
-                  isLoading={isLoading}
-                  selectedTournaments={selectedTournaments}
-                />
+                <TabsContent value="upcoming" className="mt-2">
+                  {isLoading ? (
+                    <div className="flex flex-nowrap overflow-x-auto pb-2 gap-4">
+                      {renderSkeletons()}
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-lg">
+                      <MatchesSection
+                        title=""
+                        matches={filterMatches(apiUpcomingMatches)}
+                        showMore={false}
+                        horizontal={true}
+                      />
+                    </div>
+                  )}
+                </TabsContent>
                 
-                <MatchesTabContent 
-                  tabId="finished"
-                  matches={apiFinishedMatches}
-                  isLoading={isLoading}
-                  selectedTournaments={selectedTournaments}
-                />
+                <TabsContent value="finished" className="mt-2">
+                  {isLoading ? (
+                    <div className="flex flex-nowrap overflow-x-auto pb-2 gap-4">
+                      {renderSkeletons()}
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-lg">
+                      <MatchesSection
+                        title=""
+                        matches={filterMatches(apiFinishedMatches)}
+                        showMore={false}
+                        horizontal={true}
+                      />
+                    </div>
+                  )}
+                </TabsContent>
               </Tabs>
             </div>
             
             {activeTab !== "live" && !isLoading && (
-              <MatchesPagination />
+              <div className="mt-6 flex justify-center">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious href="#" className="rtl:rotate-180" />
+                    </PaginationItem>
+                    <PaginationItem>
+                      <PaginationLink href="#" isActive>1</PaginationLink>
+                    </PaginationItem>
+                    <PaginationItem>
+                      <PaginationLink href="#">2</PaginationLink>
+                    </PaginationItem>
+                    <PaginationItem>
+                      <PaginationLink href="#">3</PaginationLink>
+                    </PaginationItem>
+                    <PaginationItem>
+                      <PaginationNext href="#" className="rtl:rotate-180" />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
             )}
           </div>
         </div>

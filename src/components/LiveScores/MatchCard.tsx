@@ -28,7 +28,7 @@ const MatchCard: React.FC<{ match: MatchInfo }> = ({ match }) => {
   const { homeTeam, awayTeam, time, status, league } = match;
 
   return (
-    <Card className="match-card w-full">
+    <Card className="match-card">
       {/* League Header */}
       <div className="bg-gray-100 p-2 flex items-center justify-between">
         <div className="flex items-center space-x-2 rtl:space-x-reverse">
