@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import MainLayout from '@/components/Layout/MainLayout';
 import MatchesSection from '@/components/LiveScores/MatchesSection';
 import NewsSection from '@/components/News/NewsSection';
@@ -7,8 +7,78 @@ import LeagueTable from '@/components/Standings/LeagueTable';
 import { liveMatches, upcomingMatches, finishedMatches } from '@/data/matchesData';
 import { featuredNews, latestNews } from '@/data/newsData';
 import { egyptianLeagueStandings, laLigaStandings, premierLeagueStandings } from '@/data/standingsData';
+import { fetchLiveMatches, fetchTodayMatches, fetchFinishedMatches, groupMatchesByLeague } from '@/services/matchesApi';
+import { MatchInfo } from '@/components/LiveScores/MatchCard';
 
 const Index = () => {
+  const [apiLiveMatches, setApiLiveMatches] = useState<MatchInfo[]>(liveMatches);
+  const [apiUpcomingMatches, setApiUpcomingMatches] = useState<MatchInfo[]>(upcomingMatches);
+  const [apiFinishedMatches, setApiFinishedMatches] = useState<MatchInfo[]>(finishedMatches);
+  const [isLoading, setIsLoading] = useState(true);
+  const [liveMatchesByLeague, setLiveMatchesByLeague] = useState<Record<string, MatchInfo[]>>({});
+
+  useEffect(() => {
+    const loadMatchData = async () => {
+      setIsLoading(true);
+      try {
+        // Try to fetch data from API
+        const [liveData, upcomingData, finishedData] = await Promise.all([
+          fetchLiveMatches(),
+          fetchTodayMatches(),
+          fetchFinishedMatches()
+        ]);
+        
+        // If we have API data, use it. Otherwise, fall back to static data
+        if (liveData.length > 0) {
+          setApiLiveMatches(liveData);
+          // Group live matches by league
+          setLiveMatchesByLeague(groupMatchesByLeague(liveData));
+        }
+        if (upcomingData.length > 0) setApiUpcomingMatches(upcomingData);
+        if (finishedData.length > 0) setApiFinishedMatches(finishedData);
+      } catch (error) {
+        console.error("Error loading match data:", error);
+        // Already using fallback data from initial state
+        setLiveMatchesByLeague(groupMatchesByLeague(liveMatches));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadMatchData();
+  }, []);
+
+  // Render live matches by league
+  const renderLiveMatchesByLeague = () => {
+    if (Object.keys(liveMatchesByLeague).length === 0) {
+      return (
+        <MatchesSection 
+          title="المباريات المباشرة" 
+          matches={apiLiveMatches} 
+          showMore={true}
+          link="/matches?status=live"
+        />
+      );
+    }
+
+    return Object.entries(liveMatchesByLeague).map(([leagueId, leagueMatches]) => {
+      // Get league info from the first match
+      const { name } = leagueMatches[0].league;
+      
+      return (
+        <div key={leagueId} className="mb-6">
+          <MatchesSection
+            title={name}
+            matches={leagueMatches}
+            showMore={true}
+            link={`/matches?status=live&league=${leagueId}`}
+            horizontal={true}
+          />
+        </div>
+      );
+    });
+  };
+
   return (
     <MainLayout>
       <div className="container mx-auto px-4 py-8">
@@ -24,12 +94,7 @@ const Index = () => {
 
         {/* Live Matches Section */}
         <div className="mb-12">
-          <MatchesSection 
-            title="المباريات المباشرة" 
-            matches={liveMatches} 
-            showMore={true}
-            link="/matches?status=live"
-          />
+          {renderLiveMatchesByLeague()}
         </div>
 
         {/* Featured News Section */}
@@ -47,7 +112,7 @@ const Index = () => {
           <div className="lg:col-span-2">
             <MatchesSection 
               title="مباريات اليوم" 
-              matches={upcomingMatches.slice(0, 4)} 
+              matches={apiUpcomingMatches.slice(0, 4)} 
               showMore={true}
               link="/matches?status=upcoming"
             />
@@ -90,7 +155,7 @@ const Index = () => {
         <div className="mb-12">
           <MatchesSection 
             title="نتائج آخر المباريات" 
-            matches={finishedMatches} 
+            matches={apiFinishedMatches} 
             showMore={true}
             link="/matches?status=finished"
           />
