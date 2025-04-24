@@ -1,4 +1,3 @@
-
 import { Tournament } from '@/components/LiveScores/TournamentFilter';
 
 // API configuration
@@ -8,7 +7,7 @@ const API_KEY_STORAGE_KEY = "football_api_key";
 // Get API key from localStorage or use default
 const getApiKey = (): string => {
   const storedKey = localStorage.getItem(API_KEY_STORAGE_KEY);
-  return storedKey || "f6938229fc2901fcd026fd58c84df62c"; // Use default key if none found
+  return storedKey || ""; // Don't use default key
 };
 
 // Featured leagues to show by default
@@ -73,6 +72,11 @@ export const fetchLeagues = async (): Promise<Tournament[]> => {
   try {
     const apiKey = getApiKey();
     
+    if (!apiKey) {
+      console.log("No API key found, using placeholder data");
+      return placeholderTournaments;
+    }
+
     const response = await fetch(`${API_URL}/leagues`, {
       headers: {
         "x-rapidapi-key": apiKey,
@@ -90,9 +94,13 @@ export const fetchLeagues = async (): Promise<Tournament[]> => {
       throw new Error("Invalid API response format");
     }
     
-    // Filter to include only featured leagues
+    // Filter to include only featured leagues and current season
+    const currentYear = new Date().getFullYear();
     const featuredLeagues = data.response
-      .filter((league: any) => featuredLeagueIds.includes(league.league?.id))
+      .filter((league: any) => 
+        featuredLeagueIds.includes(league.league?.id) && 
+        league.seasons?.some((season: any) => season.year === currentYear)
+      )
       .map((league: any) => ({
         id: league.league?.id?.toString() || "unknown",
         name: getArabicLeagueName(league.league?.id, league.league?.name) || league.league?.name || "Unknown League",
