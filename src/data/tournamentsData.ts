@@ -10,14 +10,13 @@ const getApiKey = (): string => {
   return storedKey || ""; // Don't use default key
 };
 
-// Featured leagues to show by default
+// Featured leagues to show by default (commonly followed leagues)
 const featuredLeagueIds = [
   39,  // Premier League (England)
   140, // La Liga (Spain)
   61,  // Ligue 1 (France)
   78,  // Bundesliga (Germany)
   135, // Serie A (Italy)
-  183, // Primeira Liga (Portugal)
   203, // Saudi Pro League
   233, // Egyptian Premier League
   2,   // UEFA Champions League
@@ -77,7 +76,9 @@ export const fetchLeagues = async (): Promise<Tournament[]> => {
       return placeholderTournaments;
     }
 
-    const response = await fetch(`${API_URL}/leagues`, {
+    // Fetch current season information for each league
+    const currentYear = new Date().getFullYear();
+    const response = await fetch(`${API_URL}/leagues?current=true&season=${currentYear}`, {
       headers: {
         "x-rapidapi-key": apiKey,
         "x-rapidapi-host": "v3.football.api-sports.io"
@@ -94,12 +95,11 @@ export const fetchLeagues = async (): Promise<Tournament[]> => {
       throw new Error("Invalid API response format");
     }
     
-    // Filter to include only featured leagues and current season
-    const currentYear = new Date().getFullYear();
+    // Filter leagues to only include featured ones and ensure they have current season
     const featuredLeagues = data.response
       .filter((league: any) => 
-        featuredLeagueIds.includes(league.league?.id) && 
-        league.seasons?.some((season: any) => season.year === currentYear)
+        featuredLeagueIds.includes(league.league?.id) &&
+        league.seasons?.some((season: any) => season.current === true)
       )
       .map((league: any) => ({
         id: league.league?.id?.toString() || "unknown",
@@ -107,6 +107,7 @@ export const fetchLeagues = async (): Promise<Tournament[]> => {
         logo: league.league?.logo || "/placeholder.svg",
       }));
     
+    // Return featured leagues if found, otherwise fallback to placeholder data
     return featuredLeagues.length > 0 ? featuredLeagues : placeholderTournaments;
   } catch (error) {
     console.error("Error fetching leagues:", error);
