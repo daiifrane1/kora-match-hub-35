@@ -54,6 +54,13 @@ const Matches = () => {
                 tournaments={tournaments} 
                 selectedTournaments={selectedTournaments}
                 onToggleTournament={handleToggleTournament}
+                matches={
+                  activeTab === "live" 
+                    ? apiLiveMatches 
+                    : activeTab === "upcoming" 
+                    ? apiUpcomingMatches 
+                    : apiFinishedMatches
+                }
               />
             </div>
           </div>

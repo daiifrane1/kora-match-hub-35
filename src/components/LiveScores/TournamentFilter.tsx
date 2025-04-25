@@ -4,6 +4,7 @@ import { Check } from 'lucide-react';
 import { fetchLeagues, placeholderTournaments } from '@/data/tournamentsData';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { MatchInfo } from './MatchCard';
 
 export interface Tournament {
   id: string;
@@ -15,12 +16,14 @@ interface TournamentFilterProps {
   tournaments: Tournament[];
   selectedTournaments: string[];
   onToggleTournament: (id: string) => void;
+  matches: MatchInfo[]; // Add matches prop
 }
 
 const TournamentFilter: React.FC<TournamentFilterProps> = ({
   tournaments: propTournaments,
   selectedTournaments,
-  onToggleTournament
+  onToggleTournament,
+  matches
 }) => {
   const [apiTournaments, setApiTournaments] = useState<Tournament[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,8 +47,24 @@ const TournamentFilter: React.FC<TournamentFilterProps> = ({
     loadTournaments();
   }, []);
   
+  // Filter tournaments to only show those that have matches today
+  const todaysTournaments = (displayTournaments: Tournament[]) => {
+    const todayLeagueIds = new Set(matches.map(match => match.league.id));
+    return displayTournaments.filter(tournament => todayLeagueIds.has(tournament.id));
+  };
+
   // Use API tournaments if available, otherwise use tournaments passed from props
-  const displayTournaments = apiTournaments.length > 0 ? apiTournaments : propTournaments;
+  const availableTournaments = apiTournaments.length > 0 ? apiTournaments : propTournaments;
+  const displayTournaments = todaysTournaments(availableTournaments);
+
+  if (displayTournaments.length === 0 && !isLoading) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-4">
+        <h3 className="font-bold text-lg mb-4 border-b pb-2">تصفية حسب البطولة</h3>
+        <p className="text-center text-kooora-gray">لا توجد بطولات اليوم</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-lg shadow-md p-4">
