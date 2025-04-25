@@ -72,45 +72,49 @@ export const fetchLeagues = async (): Promise<Tournament[]> => {
     const apiKey = getApiKey();
     
     if (!apiKey) {
-      console.log("No API key found, using placeholder data");
+      console.log("لم يتم العثور على مفتاح API، استخدام البيانات الاحتياطية");
       return placeholderTournaments;
     }
 
-    // Fetch current season information for each league
     const currentYear = new Date().getFullYear();
-    const response = await fetch(`${API_URL}/leagues?current=true&season=${currentYear}`, {
+    
+    // Fetch all active leagues for current season
+    const response = await fetch(`${API_URL}/leagues?current=true&season=${currentYear}&type=league`, {
+      method: 'GET',
       headers: {
-        "x-rapidapi-key": apiKey,
-        "x-rapidapi-host": "v3.football.api-sports.io"
+        'x-rapidapi-host': 'v3.football.api-sports.io',
+        'x-rapidapi-key': apiKey
       }
     });
 
     if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+      throw new Error(`خطأ في API: ${response.status}`);
     }
 
     const data = await response.json();
     
     if (!data.response || !Array.isArray(data.response)) {
-      throw new Error("Invalid API response format");
+      console.error("تنسيق استجابة API غير صالح");
+      return placeholderTournaments;
     }
-    
-    // Filter leagues to only include featured ones and ensure they have current season
-    const featuredLeagues = data.response
+
+    // Filter and map the leagues
+    const activeLeagues = data.response
       .filter((league: any) => 
         featuredLeagueIds.includes(league.league?.id) &&
         league.seasons?.some((season: any) => season.current === true)
       )
       .map((league: any) => ({
         id: league.league?.id?.toString() || "unknown",
-        name: getArabicLeagueName(league.league?.id, league.league?.name) || league.league?.name || "Unknown League",
+        name: getArabicLeagueName(league.league?.id, league.league?.name) || league.league?.name || "دوري غير معروف",
         logo: league.league?.logo || "/placeholder.svg",
       }));
-    
-    // Return featured leagues if found, otherwise fallback to placeholder data
-    return featuredLeagues.length > 0 ? featuredLeagues : placeholderTournaments;
+
+    // Return active leagues if found, otherwise fallback to placeholder data
+    return activeLeagues.length > 0 ? activeLeagues : placeholderTournaments;
+
   } catch (error) {
-    console.error("Error fetching leagues:", error);
+    console.error("خطأ في جلب البيانات:", error);
     return placeholderTournaments;
   }
 };
@@ -123,7 +127,7 @@ const getArabicLeagueName = (id: number, fallbackName: string): string => {
     61: 'الدوري الفرنسي',
     78: 'الدوري الألماني',
     135: 'الدوري الإيطالي',
-    183: 'الدوري البرتغالي',
+    183: 'الدوري ا��برتغالي',
     203: 'الدوري السعودي',
     233: 'الدوري المصري',
     2: 'دوري أبطال أوروبا',
@@ -132,5 +136,5 @@ const getArabicLeagueName = (id: number, fallbackName: string): string => {
   return arabicNames[id] || fallbackName;
 };
 
-// Use placeholder data as default export (for backward compatibility)
+// Use placeholder data as default export
 export const tournaments = placeholderTournaments;
