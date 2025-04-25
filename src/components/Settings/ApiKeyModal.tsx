@@ -29,10 +29,7 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onApiKeyChange }) => {
   useEffect(() => {
     const savedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY) || '';
     setApiKey(savedApiKey);
-    if (onApiKeyChange && savedApiKey) {
-      onApiKeyChange(savedApiKey);
-    }
-  }, [onApiKeyChange]);
+  }, []);
 
   const handleSave = () => {
     if (!apiKey.trim()) {
@@ -52,7 +49,7 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onApiKeyChange }) => {
     
     toast({
       title: "تم الحفظ",
-      description: "تم حفظ مفتاح API بنجاح.",
+      description: "تم حفظ مفتاح API بنجاح. سيتم تحديث البيانات.",
     });
     
     setOpen(false);
@@ -68,18 +65,24 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onApiKeyChange }) => {
     
     toast({
       title: "تم المسح",
-      description: "تم مسح مفتاح API.",
+      description: "تم مسح مفتاح API. سيتم استخدام البيانات الافتراضية.",
     });
     
     setOpen(false);
   };
 
+  const hasApiKey = apiKey.trim().length > 0;
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 flex items-center gap-1">
+        <Button 
+          variant={hasApiKey ? "outline" : "secondary"} 
+          size="sm" 
+          className={`h-8 flex items-center gap-1 ${!hasApiKey ? "bg-amber-100 text-amber-800 hover:bg-amber-200" : ""}`}
+        >
           <Settings className="h-4 w-4" />
-          <span>إعدادات API</span>
+          <span>{hasApiKey ? "إعدادات API" : "إضافة مفتاح API"}</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
@@ -124,9 +127,11 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onApiKeyChange }) => {
           <Button type="button" variant="default" onClick={handleSave}>
             حفظ
           </Button>
-          <Button type="button" variant="outline" onClick={handleClear}>
-            مسح المفتاح
-          </Button>
+          {hasApiKey && (
+            <Button type="button" variant="outline" onClick={handleClear}>
+              مسح المفتاح
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

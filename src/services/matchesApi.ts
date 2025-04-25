@@ -1,3 +1,4 @@
+
 import { MatchInfo } from "@/components/LiveScores/MatchCard";
 
 // API configuration
@@ -6,7 +7,11 @@ const API_KEY_STORAGE_KEY = "football_api_key";
 
 // Get API key from localStorage
 const getApiKey = (): string => {
-  return localStorage.getItem(API_KEY_STORAGE_KEY) || '';
+  const apiKey = localStorage.getItem(API_KEY_STORAGE_KEY) || '';
+  if (!apiKey) {
+    console.warn("لم يتم العثور على مفتاح API");
+  }
+  return apiKey;
 };
 
 // Convert API response to our app's MatchInfo format

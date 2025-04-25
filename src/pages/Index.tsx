@@ -9,6 +9,10 @@ import { featuredNews, latestNews } from '@/data/newsData';
 import { egyptianLeagueStandings, laLigaStandings, premierLeagueStandings } from '@/data/standingsData';
 import { fetchLiveMatches, fetchTodayMatches, fetchFinishedMatches, groupMatchesByLeague } from '@/services/matchesApi';
 import { MatchInfo } from '@/components/LiveScores/MatchCard';
+import ApiKeyModal from '@/components/Settings/ApiKeyModal';
+import { useToast } from "@/components/ui/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { InfoIcon } from "lucide-react";
 
 const Index = () => {
   const [apiLiveMatches, setApiLiveMatches] = useState<MatchInfo[]>(liveMatches);
@@ -16,6 +20,8 @@ const Index = () => {
   const [apiFinishedMatches, setApiFinishedMatches] = useState<MatchInfo[]>(finishedMatches);
   const [isLoading, setIsLoading] = useState(true);
   const [liveMatchesByLeague, setLiveMatchesByLeague] = useState<Record<string, MatchInfo[]>>({});
+  const [showApiKeyAlert, setShowApiKeyAlert] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     const loadMatchData = async () => {
@@ -40,6 +46,11 @@ const Index = () => {
         console.error("Error loading match data:", error);
         // Already using fallback data from initial state
         setLiveMatchesByLeague(groupMatchesByLeague(liveMatches));
+        
+        // Check if error is related to missing API key
+        if (error instanceof Error && error.message.includes('No API key provided')) {
+          setShowApiKeyAlert(true);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -47,6 +58,11 @@ const Index = () => {
 
     loadMatchData();
   }, []);
+
+  const handleApiKeyChange = () => {
+    setShowApiKeyAlert(false);
+    window.location.reload();
+  };
 
   // Render live matches by league
   const renderLiveMatchesByLeague = () => {
@@ -89,8 +105,22 @@ const Index = () => {
             <p className="text-lg mb-6">
               أحدث أخبار كرة القدم، النتائج المباشرة، مواعيد المباريات، وترتيب الدوريات المحلية والعالمية في مكان واحد.
             </p>
+            <div className="flex justify-end">
+              <ApiKeyModal onApiKeyChange={handleApiKeyChange} />
+            </div>
           </div>
         </div>
+
+        {/* API Key Alert */}
+        {showApiKeyAlert && (
+          <Alert className="mb-8 bg-amber-50 border-amber-200">
+            <InfoIcon className="h-5 w-5 text-amber-500" />
+            <AlertDescription className="flex items-center justify-between">
+              <span>تم استخدام بيانات افتراضية. أضف مفتاح API للحصول على بيانات المباريات الحقيقية.</span>
+              <ApiKeyModal onApiKeyChange={handleApiKeyChange} />
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Live Matches Section */}
         <div className="mb-12">
